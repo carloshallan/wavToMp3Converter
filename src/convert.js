@@ -1,16 +1,16 @@
 const fs = require('fs')
 const ffmpeg = require('fluent-ffmpeg')
-const {isFile, isWavFile, inputExtensionName, outputExtensionName} = require('./utils')
+const {isFile, isWavFile, replaceExtensionToMp3} = require('./utils')
 
 async function splitAudioOnSilence(inputFile, outputDir) {
     const silenceThreshold = -50 // Adjust this value according to your needs (in dB)
-    const silenceDuration = 1 // Duration of silence to be considered as a separator (in seconds)
+    const silenceDuration = 0.65 // Duration of silence to be considered as a separator (in seconds)
 
     return new Promise((resolve, reject) => {
         let silenceStartTimes = []
 
         ffmpeg(inputFile)
-            .outputOptions('-f', 'null', '-')
+            .output('pipe:1').format('null') // Updated line
             .audioFilters(`silencedetect=noise=${silenceThreshold}dB:d=${silenceDuration}`)
             .on('stderr', (stderrLine) => {
                 const silenceMatch = stderrLine.match(/silence_start: (\d+(\.\d+)?)/)
@@ -56,11 +56,12 @@ async function splitAudioOnSilence(inputFile, outputDir) {
     })
 }
 
+
 function convertWavToMp3(filename) {
     return new Promise((resolve, reject) => {
         if (!isWavFile(filename)) throw new Error('This file is not a wav file.')
 
-        const outputFile = filename.replace(inputExtensionName, outputExtensionName)
+        const outputFile = replaceExtensionToMp3(filename)
 
         ffmpeg({source: filename})
             .on('error', (err) => {
